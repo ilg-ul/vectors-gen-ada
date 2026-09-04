@@ -3,9 +3,12 @@
 --  Exercises Vector_Table_Parser paths that `startup_stm32h533xx.s`
 --  never touches: the three trailing-comment styles on a `.word`
 --  line, blank/standalone-comment lines tolerated inside the table,
---  the two error conditions, and lines that look almost like a
---  `.word` directive but must be rejected (trailing junk after a
---  closing `*/`, an unterminated `/* ... `).
+--  the two error conditions, lines that look almost like a `.word`
+--  directive but must be rejected (trailing junk after a closing
+--  `*/`, an unterminated `/* ... `), and a standalone-comment line
+--  too short to be one (regression case for a real bug: an
+--  overlapping-window check once misclassified "/*/" as a
+--  self-contained "/* ... */" comment).
 
 with Ada.Text_IO;
 with Ada.Command_Line;
@@ -178,6 +181,34 @@ procedure Parser_Selftest is
                 & " (raised instead)", False);
    end Test_Unterminated_Comment;
 
+   ------------------------------------------------------------------
+   --  Case 5: a standalone line too short to be a real "/* ... */"
+   --  comment ("/*/" -- just 3 characters) must NOT be tolerated as
+   --  a comment-only line; it ends the table at that point, exactly
+   --  like any other unrecognised line would. Regression test for a
+   --  bug where Is_Comment_Only_Line's overlapping first/last-two-
+   --  characters check let a 3-character line satisfy both the
+   --  "starts with /*" and "ends with */" conditions off the same
+   --  shared middle character.
+   ------------------------------------------------------------------
+   procedure Test_Short_Slash_Star_Line is
+      Lines : constant VTP.Line_Vectors.Vector := Lines_Of
+        ([S ("g_pfnVectors:"),
+          S (ASCII.HT & ".word" & ASCII.HT & "FIRST_Handler"),
+          S ("/*/"),
+          S (ASCII.HT & ".word" & ASCII.HT & "SECOND_Handler")]);
+      Table : constant VTP.Entry_Vectors.Vector := VTP.Parse (Lines);
+   begin
+      Check ("""/*/"" (too short to be a real comment) ends the "
+             & "table at 1 entry",
+             Table.Length = 1
+             and then To_String (Table (1).Symbol) = "FIRST_Handler");
+   exception
+      when others =>
+         Check ("""/*/"" (too short to be a real comment) ends the "
+                & "table at 1 entry (raised instead)", False);
+   end Test_Short_Slash_Star_Line;
+
 begin
    Put_Line ("Vector_Table_Parser self-test");
    Test_Comment_Styles;
@@ -185,6 +216,7 @@ begin
    Test_Empty_Table;
    Test_Rejected_Word_Lines;
    Test_Unterminated_Comment;
+   Test_Short_Slash_Star_Line;
 
    New_Line;
    if Failures = 0 then

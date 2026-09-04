@@ -82,7 +82,12 @@ package body Vector_Table_Parser is
       F : constant Natural := Trimmed_Line'First;
       L : constant Natural := Trimmed_Line'Last;
    begin
-      if Trimmed_Line'Length >= 2
+      --  Length >= 4 (not >= 2): a shorter line, e.g. "/*/", would
+      --  have the "/*" and "*/" windows overlap on its middle
+      --  character, wrongly matching a 3-character line that the
+      --  mirrored JS regex (`/^\/\*.*\*\/$/`, minimum match "/**/")
+      --  does not.
+      if Trimmed_Line'Length >= 4
         and then Trimmed_Line (F .. F + 1) = "/*"
         and then Trimmed_Line (L - 1 .. L) = "*/"
       then
