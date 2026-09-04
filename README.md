@@ -2,7 +2,7 @@
 
 This project reimplements in Ada the functionality of the
 `convert-startup-to-vectors.mjs` script used to convert
-Cortex-M CMSIS `startup-<device>.s` assembly files into µOS++
+Cortex-M CMSIS `startup_<device>.s` assembly files into µOS++
 `vectors-<device>.c`.
 
 The conversion requires the `templates/vectors-liquid.c` file, a
