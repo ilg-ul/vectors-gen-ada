@@ -43,7 +43,21 @@ endif
 TEST_BINS := parser_selftest lexer_selftest liquid_parser_selftest \
              evaluator_selftest renderer_selftest
 
-.PHONY: all build test clean
+# Same golden fixtures the renderer_selftest checks in-process; "convert"
+# instead exercises the real CLI end to end, by actually running "main".
+#
+# main stamps the output's header comment with whatever input path it's
+# given, and the golden file was generated from the device tree's real
+# path, not from tests/golden/ -- so the input is staged at that same
+# relative path under obj/ first, to get a byte-identical comparison
+# (matching what renderer_selftest already checks in-process).
+GOLDEN_INPUT  := tests/golden/startup_stm32h533xx.s
+GOLDEN_OUTPUT := tests/golden/vectors-stm32h533xx.c
+CONVERT_STAGE_DIR := obj/convert-input
+CONVERT_INPUT_REL := platforms/nucleo-h533re/device/stm32cubemx/startup_stm32h533xx.s
+CONVERT_OUTPUT := obj/vectors-stm32h533xx.c
+
+.PHONY: all build test convert clean
 
 all: build
 
@@ -64,6 +78,15 @@ test: build
 	  ./obj/$$t || fail=1; \
 	done; \
 	exit $$fail
+
+convert: build
+	@mkdir -p $(CONVERT_STAGE_DIR)/$(dir $(CONVERT_INPUT_REL)); \
+	cp $(GOLDEN_INPUT) $(CONVERT_STAGE_DIR)/$(CONVERT_INPUT_REL); \
+	( cd $(CONVERT_STAGE_DIR) \
+	  && $(CURDIR)/obj/main $(CONVERT_INPUT_REL) $(CURDIR)/$(CONVERT_OUTPUT) \
+	       $(CURDIR)/templates/vectors-liquid.c ); \
+	diff -u $(GOLDEN_OUTPUT) $(CONVERT_OUTPUT) \
+	  && echo "OK: $(CONVERT_OUTPUT) matches $(GOLDEN_OUTPUT) byte-for-byte"
 
 clean:
 	@gprclean -P $(GPR) ; exit $$?
