@@ -6,6 +6,23 @@ project Vectors_Gen is
                  "liquid_parser_selftest.adb", "evaluator_selftest.adb",
                  "renderer_selftest.adb");
 
+   --  The FSF GNAT toolchain distributed via Alire does not auto-detect
+   --  the macOS SDK, so the linker fails with "library not found for
+   --  -lSystem" unless told explicitly where it is. "Host" defaults to
+   --  "other", which adds no linker switches at all, so this is a no-op
+   --  on Linux and every other platform. `make` (see Makefile) sets it
+   --  automatically; set it by hand only when invoking gprbuild directly
+   --  on macOS, e.g.:
+   --    gprbuild -P vectors_gen.gpr -XVECTORS_GEN_HOST=macos
+   type Host_Kind is ("macos", "other");
+   Host : Host_Kind := external ("VECTORS_GEN_HOST", "other");
+
+   --  Overridable in case Xcode Command Line Tools are installed
+   --  somewhere other than the standard location.
+   Macos_Sdkroot := external
+     ("VECTORS_GEN_SDKROOT",
+      "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk");
+
    package Compiler is
       --  "-gnatyg-s": GNAT's standard style checks, minus the "separate
       --  subprogram spec present" rule, which is impractical for small
@@ -13,5 +30,14 @@ project Vectors_Gen is
       for Default_Switches ("Ada") use
         ("-gnat2022", "-gnatwa", "-gnatyg-s");
    end Compiler;
+
+   package Linker is
+      case Host is
+         when "macos" =>
+            for Switches ("Ada") use ("-isysroot", Macos_Sdkroot);
+
+         when "other" =>
+      end case;
+   end Linker;
 
 end Vectors_Gen;
