@@ -1,0 +1,17 @@
+project Vectors_Gen is
+
+   for Source_Dirs use ("src", "tests");
+   for Object_Dir use "obj";
+   for Main use ("main.adb", "parser_selftest.adb", "lexer_selftest.adb",
+                 "liquid_parser_selftest.adb", "evaluator_selftest.adb",
+                 "renderer_selftest.adb");
+
+   package Compiler is
+      --  "-gnatyg-s": GNAT's standard style checks, minus the "separate
+      --  subprogram spec present" rule, which is impractical for small
+      --  helpers nested inside another subprogram's declarative part.
+      for Default_Switches ("Ada") use
+        ("-gnat2022", "-gnatwa", "-gnatyg-s");
+   end Compiler;
+
+end Vectors_Gen;
