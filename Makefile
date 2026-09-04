@@ -36,7 +36,14 @@ GPRBUILD_XFLAGS := -XVECTORS_GEN_HOST=macos \
                     -XVECTORS_GEN_SDKROOT=$(shell xcrun --show-sdk-path)
 endif
 
-.PHONY: all build clean
+# The selftest executables (everything in vectors_gen.gpr's "Main" list
+# except "main"). They read fixtures via paths relative to the project
+# root (e.g. "tests/golden/..."), so they must be run from here, not
+# from obj/.
+TEST_BINS := parser_selftest lexer_selftest liquid_parser_selftest \
+             evaluator_selftest renderer_selftest
+
+.PHONY: all build test clean
 
 all: build
 
@@ -49,6 +56,14 @@ build:
 	}
 	@echo gprbuild -P $(GPR) $(GPRBUILD_XFLAGS)
 	@gprbuild -P $(GPR) $(GPRBUILD_XFLAGS) ; exit $$?
+
+test: build
+	@fail=0; \
+	for t in $(TEST_BINS); do \
+	  echo "=== $$t ==="; \
+	  ./obj/$$t || fail=1; \
+	done; \
+	exit $$fail
 
 clean:
 	@gprclean -P $(GPR) ; exit $$?
